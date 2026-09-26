@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>minimal-hud-rs — High-Performance Event-Driven Game HUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --health: #ef4444;
+      --armor: #3b82f6;
+      --stamina: #10b981;
+      --hunger: #f97316;
+      --thirst: #06b6d4;
+      --stress: #a855f7;
+      --oxygen: #14b8a6;
+      --voice: #eab308;
+      --accent: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.08) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 2.5rem 2rem 1.5rem;
+      text-align: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem 2rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      position: relative;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #fff;
+    }
+
+    /* Simulation HUD Canvas Container */
+    .hud-stage {
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+      height: 380px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 2rem;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .stage-overlay {
+      position: absolute;
+      top: 1rem;
+      left: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.4);
+      display: flex;
+      gap: 1.5rem;
+      pointer-events: none;
+    }
+
+    /* Minimal FiveM HUD Status Rings */
+    .hud-cluster {
+      display: flex;
+      gap: 0.85rem;
+      align-items: center;
+      background: rgba(10, 15, 29, 0.6);
+      backdrop-filter: blur(12px);
+      padding: 0.75rem 1.25rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    .stat-circle {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-circle svg {
+      width: 48px;
+      height: 48px;
+      transform: rotate(-90deg);
+    }
+
+    .stat-circle circle.bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 4;
+    }
+
+    .stat-circle circle.progress {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 125.6; /* 2 * PI * 20 */
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.15s ease-out;
+    }
+
+    .stat-circle .icon {
+      position: absolute;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Pulsing animations */
+    .pulse-danger {
+      animation: hud-heartbeat 0.8s infinite ease-in-out;
+    }
+
+    @keyframes hud-heartbeat {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px var(--health)); }
+      20% { transform: scale(1.15); filter: drop-shadow(0 0 10px var(--health)); }
+      40% { transform: scale(1.05); filter: drop-shadow(0 0 4px var(--health)); }
+      60% { transform: scale(1.22); filter: drop-shadow(0 0 14px var(--health)); }
+      80% { transform: scale(1.02); }
+    }
+
+    /* Vehicle Dashboard Overlay */
+    .vehicle-hud {
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      background: rgba(10, 15, 29, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1.25rem;
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      min-width: 220px;
+    }
+
+    .vehicle-hud.hidden {
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+    }
+
+    .speed-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .speed-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 3.25rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #fff;
+      letter-spacing: -0.05em;
+    }
+
+    .speed-unit {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.375rem;
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.2s;
+    }
+
+    .speed-unit:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .gear-badge {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      text-align: center;
+      line-height: 26px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 1rem;
+      color: #38bdf8;
+    }
+
+    .rpm-bar-container {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .rpm-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981 0%, #f59e0b 70%, #ef4444 85%);
+      transition: width 0.05s linear;
+    }
+
+    .car-indicators {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.15rem;
+      padding-top: 0.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .indicator-icon {
+      opacity: 0.25;
+      transition: opacity 0.2s, transform 0.2s, color 0.2s;
+    }
+
+    .indicator-icon.active {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    .indicator-icon.danger {
+      color: var(--health);
+      animation: blink 0.6s infinite alternate;
+    }
+
+    @keyframes blink {
+      from { opacity: 0.3; }
+      to { opacity: 1; }
+    }
+
+    /* Profiling & Dirty Stats Panel */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .metric-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 0.85rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .metric-value.highlight {
+      color: #34d399;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    /* Active Dirty Flags Grid */
+    .dirty-flags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .flag-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.375rem;
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.15s;
+    }
+
+    .flag-pill.fired {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.6);
+      color: #c7d2fe;
+      transform: translateY(-1px);
+    }
+
+    /* Interactive Controls Panel */
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .control-header span.val {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    button.action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.65rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button.action-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    button.action-btn.active {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: #6366f1;
+      color: #c7d2fe;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    footer a {
+      color: #a5b4fc;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge-bar">
+      <span class="badge">Pure Rust</span>
+      <span class="badge">Event-Driven</span>
+      <span class="badge">Dirty-Checking</span>
+      <span class="badge">FiveM Architecture</span>
+      <span class="badge">Bevy 0.15 ECS</span>
+    </div>
+    <h1>minimal-hud-rs</h1>
+    <p class="subtitle">High-performance HUD state tracking, dynamic alert thresholds, vehicle telemetry, and zero-cost dirty change detection ported from ThatMadCap/minimal-hud.</p>
+  </header>
+
+  <main>
+    <!-- Left Column: Live HUD Stage and Performance Metrics -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <div class="card">
+        <div class="card-title">
+          <span>Live HUD Simulation</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="action-btn" id="btn-audio" style="padding: 0.3rem 0.75rem; font-size: 0.75rem;">
+              🔊 Sound: ON
+            </button>
+          </div>
+        </div>
+
+        <div class="hud-stage" id="hud-stage">
+          <div class="stage-overlay">
+            <span>ENGINE: Rust v1.98</span>
+            <span>FREQ: 60Hz</span>
+            <span id="voice-label">VOICE: Normal (5.0m)</span>
+          </div>
+
+          <!-- FiveM Circular Meter HUD -->
+          <div class="hud-cluster" id="hud-cluster">
+            <!-- Health -->
+            <div class="stat-circle" id="circle-health">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-health" cx="24" cy="24" r="20" stroke="var(--health)" />
+              </svg>
+              <div class="icon">❤️</div>
+            </div>
+
+            <!-- Armor -->
+            <div class="stat-circle" id="circle-armor">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-armor" cx="24" cy="24" r="20" stroke="var(--armor)" />
+              </svg>
+              <div class="icon">🛡️</div>
+            </div>
+
+            <!-- Stamina -->
+            <div class="stat-circle" id="circle-stamina">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-stamina" cx="24" cy="24" r="20" stroke="var(--stamina)" />
+              </svg>
+              <div class="icon">⚡</div>
+            </div>
+
+            <!-- Hunger -->
+            <div class="stat-circle" id="circle-hunger">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-hunger" cx="24" cy="24" r="20" stroke="var(--hunger)" />
+              </svg>
+              <div class="icon">🍔</div>
+            </div>
+
+            <!-- Thirst -->
+            <div class="stat-circle" id="circle-thirst">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-thirst" cx="24" cy="24" r="20" stroke="var(--thirst)" />
+              </svg>
+              <div class="icon">💧</div>
+            </div>
+
+            <!-- Stress -->
+            <div class="stat-circle" id="circle-stress">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-stress" cx="24" cy="24" r="20" stroke="var(--stress)" />
+              </svg>
+              <div class="icon">🧠</div>
+            </div>
+
+            <!-- Oxygen -->
+            <div class="stat-circle" id="circle-oxygen">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-oxygen" cx="24" cy="24" r="20" stroke="var(--oxygen)" />
+              </svg>
+              <div class="icon">🤿</div>
+            </div>
+
+            <!-- Voice -->
+            <div class="stat-circle" id="circle-voice">
+              <svg viewBox="0 0 48 48">
+                <circle class="bg" cx="24" cy="24" r="20" />
+                <circle class="progress" id="prog-voice" cx="24" cy="24" r="20" stroke="var(--voice)" />
+              </svg>
+              <div class="icon" id="icon-voice">🎙️</div>
+            </div>
+          </div>
+
+          <!-- Vehicle Overlay -->
+          <div class="vehicle-hud" id="vehicle-hud">
+            <div class="speed-row">
+              <span class="speed-num" id="veh-speed">0</span>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                <span class="gear-badge" id="veh-gear">N</span>
+                <span class="speed-unit" id="veh-unit">MPH</span>
+              </div>
+            </div>
+
+            <div class="rpm-bar-container">
+              <div class="rpm-bar-fill" id="veh-rpm-fill"></div>
+            </div>
+
+            <div class="car-indicators">
+              <span class="indicator-icon" id="ind-seatbelt" title="Seatbelt">🚨</span>
+              <span class="indicator-icon" id="ind-lights" title="Headlights">💡</span>
+              <span class="indicator-icon" id="ind-fuel" title="Fuel">⛽</span>
+              <span class="indicator-icon" id="ind-engine" title="Engine">🔧</span>
+              <span class="indicator-icon" id="ind-brake" title="Handbrake">🅿️</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dirty-Checking Efficiency Dashboard -->
+      <div class="card">
+        <div class="card-title">
+          <span>Dirty-Checking Event Engine Profiler</span>
+          <span style="font-size: 0.8rem; color: #10b981; font-family: 'JetBrains Mono', monospace;">● ACTIVE</span>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <div class="metric-value" id="stat-ticks">0</div>
+            <div class="metric-label">Ticks Evaluated</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value" id="stat-redraws">0</div>
+            <div class="metric-label">UI Redraws Dispatched</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-value highlight" id="stat-saved">0.0%</div>
+            <div class="metric-label">Render Cycles Saved</div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">
+            DIRTY FLAGS MASK (CURRENT FRAME)
+          </div>
+          <div class="dirty-flags-container">
+            <span class="flag-pill" id="flag-HEALTH">HEALTH</span>
+            <span class="flag-pill" id="flag-ARMOR">ARMOR</span>
+            <span class="flag-pill" id="flag-STAMINA">STAMINA</span>
+            <span class="flag-pill" id="flag-HUNGER">HUNGER</span>
+            <span class="flag-pill" id="flag-THIRST">THIRST</span>
+            <span class="flag-pill" id="flag-STRESS">STRESS</span>
+            <span class="flag-pill" id="flag-OXYGEN">OXYGEN</span>
+            <span class="flag-pill" id="flag-VOICE">VOICE</span>
+            <span class="flag-pill" id="flag-SPEED">SPEED</span>
+            <span class="flag-pill" id="flag-RPM">RPM</span>
+            <span class="flag-pill" id="flag-GEAR">GEAR</span>
+            <span class="flag-pill" id="flag-FUEL">FUEL</span>
+            <span class="flag-pill" id="flag-ENGINE">ENGINE</span>
+            <span class="flag-pill" id="flag-SEATBELT">SEATBELT</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Controls & Telemetry Simulation -->
+    <div class="card">
+      <div class="card-title">Simulation Controls</div>
+
+      <div class="controls-panel">
+        <div class="btn-row">
+          <button class="action-btn" id="btn-damage">💥 Take 25 Dmg</button>
+          <button class="action-btn" id="btn-heal">🩹 Heal 25 HP</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="action-btn" id="btn-eat">🍔 Eat Burger</button>
+          <button class="action-btn" id="btn-drink">🥤 Drink Water</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="action-btn" id="btn-talk">🎙️ Push To Talk</button>
+          <button class="action-btn" id="btn-voice-cycle">🔊 Range: Normal</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="action-btn active" id="btn-veh-toggle">🚗 In Vehicle: ON</button>
+          <button class="action-btn" id="btn-seatbelt">🎗️ Seatbelt: OFF</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="action-btn" id="btn-lights">💡 Lights: OFF</button>
+          <button class="action-btn active" id="btn-brake">🅿️ Handbrake: ON</button>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 0.5rem 0;">
+
+        <!-- Health slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Health</span>
+            <span class="val" id="val-health">100%</span>
+          </div>
+          <input type="range" id="sl-health" min="0" max="100" value="100">
+        </div>
+
+        <!-- Armor slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Armor</span>
+            <span class="val" id="val-armor">50%</span>
+          </div>
+          <input type="range" id="sl-armor" min="0" max="100" value="50">
+        </div>
+
+        <!-- Hunger slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Hunger</span>
+            <span class="val" id="val-hunger">100%</span>
+          </div>
+          <input type="range" id="sl-hunger" min="0" max="100" value="100">
+        </div>
+
+        <!-- Thirst slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Thirst</span>
+            <span class="val" id="val-thirst">100%</span>
+          </div>
+          <input type="range" id="sl-thirst" min="0" max="100" value="100">
+        </div>
+
+        <!-- Vehicle Speed slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Vehicle Speed</span>
+            <span class="val" id="val-speed">0 MPH</span>
+          </div>
+          <input type="range" id="sl-speed" min="0" max="160" value="0">
+        </div>
+
+        <!-- Vehicle Fuel slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Vehicle Fuel</span>
+            <span class="val" id="val-fuel">100%</span>
+          </div>
+          <input type="range" id="sl-fuel" min="0" max="100" value="100">
+        </div>
+
+        <!-- Engine Health slider -->
+        <div class="control-group">
+          <div class="control-header">
+            <span>Engine Health</span>
+            <span class="val" id="val-engine">1000 / 1000</span>
+          </div>
+          <input type="range" id="sl-engine" min="0" max="1000" value="1000">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>minimal-hud-rs · Built with Rust & Bevy ECS · <a href="https://github.com/bhubbard/minimal-hud-rs" target="_blank">View on GitHub</a></p>
+  </footer>
+
+  <script>
+    // --- Web Audio Synthesizer ---
+    let audioCtx = null;
+    let audioEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playBeep(freq = 880, type = 'sine', duration = 0.15) {
+      if (!audioEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playHeartbeat() {
+      if (!audioEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(55, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } catch (e) {}
+    }
+
+    function playSeatbeltChime() {
+      if (!audioEnabled) return;
+      initAudio();
+      try {
+        playBeep(784, 'sine', 0.2);
+        setTimeout(() => playBeep(587, 'sine', 0.25), 180);
+      } catch (e) {}
+    }
+
+    // --- State Model ---
+    const vitals = {
+      health: 100,
+      armor: 50,
+      stamina: 100,
+      hunger: 100,
+      thirst: 100,
+      stress: 0,
+      oxygen: 100,
+      voiceMode: 'Normal', // Whisper, Normal, Shout
+      isTalking: false,
+    };
+
+    const vehicle = {
+      inVehicle: true,
+      speed: 0,
+      unit: 'MPH',
+      rpm: 0.0,
+      gear: 'N',
+      fuel: 100,
+      engine: 1000,
+      seatbelt: false,
+      lights: 'Off', // Off, Low, High
+      handbrake: true,
+    };
+
+    // --- Dirty-Checking Engine Mimicking Rust minimal-hud-rs ---
+    const lastRendered = {
+      health: -1,
+      armor: -1,
+      stamina: -1,
+      hunger: -1,
+      thirst: -1,
+      stress: -1,
+      oxygen: -1,
+      voice: '',
+      speed: -1,
+      rpm: -1,
+      gear: '',
+      fuel: -1,
+      engine: -1,
+      seatbelt: null,
+      lights: '',
+      handbrake: null,
+    };
+
+    const EPSILON = 0.25; // 0.25% threshold
+    let totalTicks = 0;
+    let dispatchedRedraws = 0;
+
+    const CIRCLE_CIRCUMFERENCE = 125.6; // 2 * PI * 20
+
+    function setMeter(id, value, max = 100) {
+      const pct = Math.max(0, Math.min(100, (value / max) * 100));
+      const offset = CIRCLE_CIRCUMFERENCE - (pct / 100) * CIRCLE_CIRCUMFERENCE;
+      const el = document.getElementById(id);
+      if (el) el.style.strokeDashoffset = offset;
+    }
+
+    // Audio Timers
+    let heartbeatTimer = 0;
+    let seatbeltTimer = 0;
+
+    // --- Main 60 FPS Event Loop ---
+    function tick() {
+      totalTicks++;
+      const firedFlags = [];
+
+      // Epsilon dirty-checking for vitals
+      if (Math.abs(vitals.health - lastRendered.health) >= EPSILON) {
+        firedFlags.push('HEALTH');
+        lastRendered.health = vitals.health;
+        setMeter('prog-health', vitals.health);
+        document.getElementById('val-health').innerText = `${Math.round(vitals.health)}%`;
+        document.getElementById('sl-health').value = vitals.health;
+
+        // Low health pulsing
+        const circle = document.getElementById('circle-health');
+        if (vitals.health <= 20) {
+          circle.classList.add('pulse-danger');
+        } else {
+          circle.classList.remove('pulse-danger');
+        }
+      }
+
+      if (Math.abs(vitals.armor - lastRendered.armor) >= EPSILON) {
+        firedFlags.push('ARMOR');
+        lastRendered.armor = vitals.armor;
+        setMeter('prog-armor', vitals.armor);
+        document.getElementById('val-armor').innerText = `${Math.round(vitals.armor)}%`;
+        document.getElementById('sl-armor').value = vitals.armor;
+      }
+
+      if (Math.abs(vitals.stamina - lastRendered.stamina) >= EPSILON) {
+        firedFlags.push('STAMINA');
+        lastRendered.stamina = vitals.stamina;
+        setMeter('prog-stamina', vitals.stamina);
+      }
+
+      if (Math.abs(vitals.hunger - lastRendered.hunger) >= EPSILON) {
+        firedFlags.push('HUNGER');
+        lastRendered.hunger = vitals.hunger;
+        setMeter('prog-hunger', vitals.hunger);
+        document.getElementById('val-hunger').innerText = `${Math.round(vitals.hunger)}%`;
+        document.getElementById('sl-hunger').value = vitals.hunger;
+      }
+
+      if (Math.abs(vitals.thirst - lastRendered.thirst) >= EPSILON) {
+        firedFlags.push('THIRST');
+        lastRendered.thirst = vitals.thirst;
+        setMeter('prog-thirst', vitals.thirst);
+        document.getElementById('val-thirst').innerText = `${Math.round(vitals.thirst)}%`;
+        document.getElementById('sl-thirst').value = vitals.thirst;
+      }
+
+      if (Math.abs(vitals.stress - lastRendered.stress) >= EPSILON) {
+        firedFlags.push('STRESS');
+        lastRendered.stress = vitals.stress;
+        setMeter('prog-stress', vitals.stress);
+      }
+
+      if (Math.abs(vitals.oxygen - lastRendered.oxygen) >= EPSILON) {
+        firedFlags.push('OXYGEN');
+        lastRendered.oxygen = vitals.oxygen;
+        setMeter('prog-oxygen', vitals.oxygen);
+      }
+
+      const voiceKey = `${vitals.voiceMode}-${vitals.isTalking}`;
+      if (voiceKey !== lastRendered.voice) {
+        firedFlags.push('VOICE');
+        lastRendered.voice = voiceKey;
+        const voicePct = vitals.voiceMode === 'Whisper' ? 33 : vitals.voiceMode === 'Normal' ? 66 : 100;
+        setMeter('prog-voice', voicePct);
+        const iconVoice = document.getElementById('icon-voice');
+        iconVoice.innerText = vitals.isTalking ? '📢' : '🎙️';
+        document.getElementById('circle-voice').style.filter = vitals.isTalking ? 'drop-shadow(0 0 10px #eab308)' : 'none';
+      }
+
+      // Vehicle telemetry dirty-checking
+      if (vehicle.inVehicle) {
+        if (Math.abs(vehicle.speed - lastRendered.speed) >= 0.5) {
+          firedFlags.push('SPEED');
+          lastRendered.speed = vehicle.speed;
+          document.getElementById('veh-speed').innerText = Math.round(vehicle.speed);
+          document.getElementById('val-speed').innerText = `${Math.round(vehicle.speed)} ${vehicle.unit}`;
+          document.getElementById('sl-speed').value = vehicle.speed;
+
+          // Compute gear & RPM dynamically based on speed
+          if (vehicle.speed === 0) {
+            vehicle.gear = vehicle.handbrake ? 'P' : 'N';
+            vehicle.rpm = 0.15;
+          } else {
+            const gearNum = Math.min(6, Math.max(1, Math.floor(vehicle.speed / 25) + 1));
+            vehicle.gear = gearNum.toString();
+            vehicle.rpm = ((vehicle.speed % 25) / 25) * 0.7 + 0.25;
+          }
+        }
+
+        if (Math.abs(vehicle.rpm - lastRendered.rpm) >= 0.02) {
+          firedFlags.push('RPM');
+          lastRendered.rpm = vehicle.rpm;
+          document.getElementById('veh-rpm-fill').style.width = `${Math.min(100, vehicle.rpm * 100)}%`;
+        }
+
+        if (vehicle.gear !== lastRendered.gear) {
+          firedFlags.push('GEAR');
+          lastRendered.gear = vehicle.gear;
+          document.getElementById('veh-gear').innerText = vehicle.gear;
+        }
+
+        if (Math.abs(vehicle.fuel - lastRendered.fuel) >= EPSILON) {
+          firedFlags.push('FUEL');
+          lastRendered.fuel = vehicle.fuel;
+          document.getElementById('val-fuel').innerText = `${Math.round(vehicle.fuel)}%`;
+          document.getElementById('sl-fuel').value = vehicle.fuel;
+          const indFuel = document.getElementById('ind-fuel');
+          if (vehicle.fuel <= 15) {
+            indFuel.classList.add('active', 'danger');
+          } else {
+            indFuel.classList.remove('danger');
+            indFuel.classList.toggle('active', vehicle.fuel < 30);
+          }
+        }
+
+        if (Math.abs(vehicle.engine - lastRendered.engine) >= 2.0) {
+          firedFlags.push('ENGINE');
+          lastRendered.engine = vehicle.engine;
+          document.getElementById('val-engine').innerText = `${Math.round(vehicle.engine)} / 1000`;
+          document.getElementById('sl-engine').value = vehicle.engine;
+          const indEng = document.getElementById('ind-engine');
+          if (vehicle.engine <= 300) {
+            indEng.classList.add('active', 'danger');
+          } else {
+            indEng.classList.remove('danger');
+            indEng.classList.toggle('active', vehicle.engine < 700);
+          }
+        }
+
+        if (vehicle.seatbelt !== lastRendered.seatbelt) {
+          firedFlags.push('SEATBELT');
+          lastRendered.seatbelt = vehicle.seatbelt;
+          const indSeat = document.getElementById('ind-seatbelt');
+          indSeat.classList.toggle('active', !vehicle.seatbelt);
+          indSeat.classList.toggle('danger', !vehicle.seatbelt && vehicle.speed > 5);
+        }
+      }
+
+      // Audio Cues
+      if (vitals.health <= 20) {
+        heartbeatTimer += 1 / 60;
+        const interval = 0.5 + (vitals.health / 20) * 0.7; // speeds up as health drops
+        if (heartbeatTimer >= interval) {
+          heartbeatTimer = 0;
+          playHeartbeat();
+        }
+      }
+
+      if (vehicle.inVehicle && !vehicle.seatbelt && vehicle.speed > 5) {
+        seatbeltTimer += 1 / 60;
+        if (seatbeltTimer >= 1.5) {
+          seatbeltTimer = 0;
+          playSeatbeltChime();
+        }
+      }
+
+      // Update Profiler Stats
+      if (firedFlags.length > 0) {
+        dispatchedRedraws++;
+      }
+
+      document.getElementById('stat-ticks').innerText = totalTicks.toLocaleString();
+      document.getElementById('stat-redraws').innerText = dispatchedRedraws.toLocaleString();
+      const savedPct = totalTicks > 0 ? (((totalTicks - dispatchedRedraws) / totalTicks) * 100).toFixed(1) : 0;
+      document.getElementById('stat-saved').innerText = `${savedPct}%`;
+
+      // Update Flag Pills
+      const flagIds = ['HEALTH', 'ARMOR', 'STAMINA', 'HUNGER', 'THIRST', 'STRESS', 'OXYGEN', 'VOICE', 'SPEED', 'RPM', 'GEAR', 'FUEL', 'ENGINE', 'SEATBELT'];
+      flagIds.forEach(f => {
+        const el = document.getElementById(`flag-${f}`);
+        if (el) {
+          el.classList.toggle('fired', firedFlags.includes(f));
+        }
+      });
+
+      requestAnimationFrame(tick);
+    }
+
+    // --- UI Controls Binding ---
+    document.getElementById('btn-damage').addEventListener('click', () => {
+      let dmg = 25;
+      if (vitals.armor > 0) {
+        if (vitals.armor >= dmg) {
+          vitals.armor -= dmg;
+          dmg = 0;
+        } else {
+          dmg -= vitals.armor;
+          vitals.armor = 0;
+        }
+      }
+      vitals.health = Math.max(0, vitals.health - dmg);
+      playBeep(320, 'sawtooth', 0.1);
+    });
+
+    document.getElementById('btn-heal').addEventListener('click', () => {
+      vitals.health = Math.min(100, vitals.health + 25);
+      playBeep(640, 'sine', 0.15);
+    });
+
+    document.getElementById('btn-eat').addEventListener('click', () => {
+      vitals.hunger = Math.min(100, vitals.hunger + 30);
+      playBeep(520, 'triangle', 0.1);
+    });
+
+    document.getElementById('btn-drink').addEventListener('click', () => {
+      vitals.thirst = Math.min(100, vitals.thirst + 30);
+      playBeep(600, 'sine', 0.1);
+    });
+
+    const btnTalk = document.getElementById('btn-talk');
+    btnTalk.addEventListener('mousedown', () => {
+      vitals.isTalking = true;
+      btnTalk.classList.add('active');
+    });
+    window.addEventListener('mouseup', () => {
+      if (vitals.isTalking) {
+        vitals.isTalking = false;
+        btnTalk.classList.remove('active');
+      }
+    });
+
+    const voiceModes = ['Whisper', 'Normal', 'Shout'];
+    const voiceDistances = { 'Whisper': '1.5m', 'Normal': '5.0m', 'Shout': '12.0m' };
+    const btnVoiceCycle = document.getElementById('btn-voice-cycle');
+    btnVoiceCycle.addEventListener('click', () => {
+      const idx = (voiceModes.indexOf(vitals.voiceMode) + 1) % voiceModes.length;
+      vitals.voiceMode = voiceModes[idx];
+      btnVoiceCycle.innerText = `🔊 Range: ${vitals.voiceMode}`;
+      document.getElementById('voice-label').innerText = `VOICE: ${vitals.voiceMode} (${voiceDistances[vitals.voiceMode]})`;
+      playBeep(440 + idx * 110, 'sine', 0.1);
+    });
+
+    const btnVeh = document.getElementById('btn-veh-toggle');
+    const vehHud = document.getElementById('vehicle-hud');
+    btnVeh.addEventListener('click', () => {
+      vehicle.inVehicle = !vehicle.inVehicle;
+      btnVeh.classList.toggle('active', vehicle.inVehicle);
+      btnVeh.innerText = `🚗 In Vehicle: ${vehicle.inVehicle ? 'ON' : 'OFF'}`;
+      vehHud.classList.toggle('hidden', !vehicle.inVehicle);
+    });
+
+    const btnSeatbelt = document.getElementById('btn-seatbelt');
+    btnSeatbelt.addEventListener('click', () => {
+      vehicle.seatbelt = !vehicle.seatbelt;
+      btnSeatbelt.classList.toggle('active', vehicle.seatbelt);
+      btnSeatbelt.innerText = `🎗️ Seatbelt: ${vehicle.seatbelt ? 'ON' : 'OFF'}`;
+      playBeep(vehicle.seatbelt ? 800 : 400, 'triangle', 0.1);
+    });
+
+    const btnLights = document.getElementById('btn-lights');
+    const indLights = document.getElementById('ind-lights');
+    const lightStates = ['OFF', 'LOW', 'HIGH'];
+    let lightIdx = 0;
+    btnLights.addEventListener('click', () => {
+      lightIdx = (lightIdx + 1) % lightStates.length;
+      vehicle.lights = lightStates[lightIdx];
+      btnLights.innerText = `💡 Lights: ${vehicle.lights}`;
+      indLights.classList.toggle('active', vehicle.lights !== 'OFF');
+      indLights.style.color = vehicle.lights === 'HIGH' ? '#38bdf8' : '#eab308';
+    });
+
+    const btnBrake = document.getElementById('btn-brake');
+    const indBrake = document.getElementById('ind-brake');
+    btnBrake.addEventListener('click', () => {
+      vehicle.handbrake = !vehicle.handbrake;
+      btnBrake.classList.toggle('active', vehicle.handbrake);
+      btnBrake.innerText = `🅿️ Handbrake: ${vehicle.handbrake ? 'ON' : 'OFF'}`;
+      indBrake.classList.toggle('active', vehicle.handbrake);
+      if (vehicle.handbrake && vehicle.speed > 0) {
+        vehicle.speed = 0;
+      }
+    });
+
+    const vehUnit = document.getElementById('veh-unit');
+    vehUnit.addEventListener('click', () => {
+      vehicle.unit = vehicle.unit === 'MPH' ? 'KM/H' : 'MPH';
+      vehUnit.innerText = vehicle.unit;
+    });
+
+    const btnAudio = document.getElementById('btn-audio');
+    btnAudio.addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      btnAudio.innerText = `🔊 Sound: ${audioEnabled ? 'ON' : 'OFF'}`;
+      btnAudio.style.opacity = audioEnabled ? '1' : '0.6';
+    });
+
+    // Sliders
+    document.getElementById('sl-health').addEventListener('input', e => vitals.health = parseFloat(e.target.value));
+    document.getElementById('sl-armor').addEventListener('input', e => vitals.armor = parseFloat(e.target.value));
+    document.getElementById('sl-hunger').addEventListener('input', e => vitals.hunger = parseFloat(e.target.value));
+    document.getElementById('sl-thirst').addEventListener('input', e => vitals.thirst = parseFloat(e.target.value));
+    document.getElementById('sl-speed').addEventListener('input', e => {
+      vehicle.speed = parseFloat(e.target.value);
+      if (vehicle.speed > 0 && vehicle.handbrake) {
+        vehicle.handbrake = false;
+        btnBrake.classList.remove('active');
+        btnBrake.innerText = '🅿️ Handbrake: OFF';
+        indBrake.classList.remove('active');
+      }
+    });
+    document.getElementById('sl-fuel').addEventListener('input', e => vehicle.fuel = parseFloat(e.target.value));
+    document.getElementById('sl-engine').addEventListener('input', e => vehicle.engine = parseFloat(e.target.value));
+
+    // Keyboard shortcuts (FiveM style)
+    window.addEventListener('keydown', e => {
+      if (e.code === 'KeyV' && !vitals.isTalking) {
+        vitals.isTalking = true;
+        btnTalk.classList.add('active');
+      } else if (e.code === 'KeyB') {
+        btnSeatbelt.click();
+      } else if (e.code === 'KeyL') {
+        btnLights.click();
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      if (e.code === 'KeyV') {
+        vitals.isTalking = false;
+        btnTalk.classList.remove('active');
+      }
+    });
+
+    // Start loop
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

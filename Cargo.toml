@@ -1,0 +1,29 @@
+[package]
+name = "minimal-hud-rs"
+version = "0.1.0"
+edition = "2024"
+authors = ["Brandon Hubbard"]
+description = "Pure Rust event-driven HUD state tracking, dirty change detection, vital stats, and vehicle telemetry from minimal-hud"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/bhubbard/minimal-hud-rs"
+keywords = ["hud", "fivem", "gamedev", "telemetry", "bevy"]
+categories = ["game-development", "gui"]
+
+[dependencies]
+glam = "0.29"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+bitflags = { version = "2.8", features = ["serde"] }
+
+# Bevy ECS integration (optional)
+bevy_ecs = { version = "0.15", optional = true, default-features = false }
+
+[features]
+default = ["std"]
+std = []
+bevy = ["dep:bevy_ecs"]
+
+[dev-dependencies]
+bevy_ecs = { version = "0.15", default-features = false }
+
