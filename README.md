@@ -1,7 +1,7 @@
 # minimal-hud-rs
 
-[![GitHub Pages](https://img.shields.io/badge/Demo-Live%20Visualizer-brightgreen?style=for-the-badge&logo=github)](https://bhubbard.github.io/minimal-hud-rs/)
-[![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue?style=for-the-badge)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20Visualizer-brightgreen?style=for-the-badge&logo=github)](https://code.brandonhubbard.com/minimal-hud-rs/)
+[![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue?style=for-the-badge)](LICENSE-MIT)
 [![Rust 2024](https://img.shields.io/badge/Rust-2024%20Edition-orange?style=for-the-badge&logo=rust)](Cargo.toml)
 [![Bevy 0.15](https://img.shields.io/badge/Bevy-0.15%20ECS-purple?style=for-the-badge&logo=bevy)](src/bevy_adapter.rs)
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-success?style=for-the-badge&logo=checkmarx)](tests/)
@@ -16,7 +16,7 @@ Designed for high-frequency game loops, simulators, and Bevy ECS projects requir
 
 Experience the interactive web visualizer with live SVG circular meters, vehicle dashboard, audio synthesizers, and real-time render cycle profiling:
 
-👉 **[https://bhubbard.github.io/minimal-hud-rs/](https://bhubbard.github.io/minimal-hud-rs/)**
+👉 **[https://code.brandonhubbard.com/minimal-hud-rs/](https://code.brandonhubbard.com/minimal-hud-rs/)** *(Mirror: [https://bhubbard.github.io/minimal-hud-rs/](https://bhubbard.github.io/minimal-hud-rs/))*
 
 ---
 
