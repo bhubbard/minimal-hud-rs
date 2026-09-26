@@ -13,7 +13,7 @@
 
   <script>
     (function() {
-      const storedTheme = localStorage.getItem('theme');
+      const storedTheme = localStorage.getItem('theme') || localStorage.getItem('bh-theme');
       if (storedTheme) {
         document.documentElement.setAttribute('data-theme', storedTheme);
       } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -1260,7 +1260,7 @@
       background: rgba(10, 10, 10, 0.88);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      z-index: 2000;
+      z-index: 99999;
       display: none;
       align-items: flex-start;
       justify-content: center;
@@ -2047,6 +2047,7 @@ fn main() {
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
+        localStorage.setItem('bh-theme', newTheme);
       });
     }
 
