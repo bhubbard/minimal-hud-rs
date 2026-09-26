@@ -1820,6 +1820,40 @@
           </div>
         </div>
       </div>
+
+      <!-- Performance Benchmarks vs Lua/NUI -->
+      <div class="card" style="border-left: 3px solid var(--color-accent-emerald);">
+        <div class="card-title">
+          <span>Performance Benchmarks (vs FiveM Lua/NUI)</span>
+          <span style="font-size: 0.8rem; color: var(--color-accent-emerald); font-family: var(--font-mono);">⚡ ZERO-COST</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; margin-bottom: 0.75rem;">
+          <div style="background: rgba(255,255,255,0.03); padding: 0.6rem; border-radius: 6px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Full HUD Step</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-accent-emerald); font-family: var(--font-mono);">11.94 ns</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">83.8M steps/sec</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); padding: 0.6rem; border-radius: 6px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Redraw Savings</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-accent-cyan); font-family: var(--font-mono);">67.9%</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Epsilon filtered</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); padding: 0.6rem; border-radius: 6px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Exp Smoothing</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-accent-cobalt); font-family: var(--font-mono);">5.80 ns</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">172M steps/sec</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); padding: 0.6rem; border-radius: 6px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Pulse &amp; Audio</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--voice); font-family: var(--font-mono);">8.22 ns</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">121M steps/sec</div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 0.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Memory: &lt;12 KB vs 50 MB CEF</span>
+          <a href="https://github.com/bhubbard/minimal-hud-rs/blob/main/BENCHMARKS.md" target="_blank" style="color: var(--color-accent-cyan); font-size: 0.75rem; text-decoration: none; font-weight: 600;">View Full Benchmarks Report &rarr;</a>
+        </div>
+      </div>
     </div>
 
     <!-- Right Column: Interactive Controls & Telemetry Simulation -->
