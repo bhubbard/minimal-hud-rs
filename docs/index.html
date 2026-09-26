@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NFEM8TN9ZM"></script>
@@ -11,19 +11,62 @@
     gtag('config', 'G-NFEM8TN9ZM');
   </script>
 
+  <script>
+    (function() {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme) {
+        document.documentElement.setAttribute('data-theme', storedTheme);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>minimal-hud-rs — High-Performance Event-Driven Game HUD</title>
+  <title>minimal-hud-rs — High-Performance Event-Driven Game HUD | Brandon Hubbard Code</title>
+  <meta name="description" content="High-performance HUD state tracking, dynamic alert thresholds, vehicle telemetry pipelines, and zero-cost dirty change detection in pure Rust.">
+  <link rel="canonical" href="https://code.brandonhubbard.com/minimal-hud-rs/">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg: #07090e;
-      --card-bg: rgba(15, 23, 42, 0.75);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
+    /* =============================================================
+       SWISS ARCHITECTURAL DESIGN SYSTEM (BRANDON HUBBARD V1.0)
+       ============================================================= */
+    :root, [data-theme="dark"] {
+      --color-void: #0a0a0a;
+      --color-charcoal: #121212;
+      --color-concrete: #262626;
+      --color-concrete-light: #3a3a3a;
+      --color-titanium: #ffffff;
+      --color-steel: #888888;
+      --color-steel-light: #aaaaaa;
+
+      --color-bg-primary: #0a0a0a;
+      --color-bg-surface: #121212;
+      --color-border: #262626;
+      --color-border-light: #3a3a3a;
+      --color-text-primary: #ffffff;
+      --color-text-secondary: #888888;
+      --color-btn-bg: #ffffff;
+      --color-btn-text: #0a0a0a;
+
+      --color-accent-cobalt: #60a5fa;
+      --color-accent-cyan: #06b6d4;
+      --color-accent-emerald: #10b981;
+      --color-accent-crimson: #f43f5e;
+
+      /* Simulation Canvas Tokens */
+      --bg: #0a0a0a;
+      --card-bg: rgba(18, 18, 18, 0.85);
+      --card-border: #262626;
+      --text: #ffffff;
+      --text-muted: #888888;
       --health: #ef4444;
       --armor: #3b82f6;
       --stamina: #10b981;
@@ -33,90 +76,599 @@
       --oxygen: #14b8a6;
       --voice: #eab308;
       --accent: #6366f1;
+
+      --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
     }
 
-    * {
+    [data-theme="light"] {
+      --color-bg-primary: #f8f9fa;
+      --color-bg-surface: #ffffff;
+      --color-border: #e5e7eb;
+      --color-border-light: #d1d5db;
+      --color-text-primary: #0a0a0a;
+      --color-text-secondary: #4b5563;
+      --color-btn-bg: #0a0a0a;
+      --color-btn-text: #ffffff;
+
+      --color-accent-cobalt: #1e40af;
+      --color-accent-cyan: #0891b2;
+      --color-accent-emerald: #059669;
+      --color-accent-crimson: #e11d48;
+
+      --color-void: #f8f9fa;
+      --color-charcoal: #ffffff;
+      --color-concrete: #e5e7eb;
+      --color-concrete-light: #d1d5db;
+      --color-steel: #4b5563;
+      --color-steel-light: #4b5563;
+      --color-titanium: #0a0a0a;
+
+      /* Simulation Canvas Tokens */
+      --bg: #f8f9fa;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: #e5e7eb;
+      --text: #0a0a0a;
+      --text-muted: #64748b;
+    }
+
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
+    html {
+      font-family: var(--font-display);
+      background-color: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
     body {
-      background-color: var(--bg);
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.08) 0px, transparent 50%),
-        radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
-      color: var(--text);
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      background-color: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      line-height: 1.6;
       overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
-    header {
-      padding: 2.5rem 2rem 1.5rem;
-      text-align: center;
-      max-width: 1200px;
-      margin: 0 auto;
+    .container {
       width: 100%;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
     }
 
-    .badge-bar {
+    /* =============================================================
+       SITE HEADER (EXACT REPLICA FROM BRANDONHUBBARD.COM)
+       ============================================================= */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background-color: var(--color-bg-primary);
+      border-bottom: 1px solid var(--color-border);
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .site-header.scrolled {
+      background-color: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    [data-theme="light"] .site-header.scrolled {
+      background-color: rgba(248, 249, 250, 0.88);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .header-content {
       display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
     }
 
-    .badge {
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .bh-square-logo {
+      width: 32px;
+      height: 32px;
+      background: var(--color-text-primary);
+      color: var(--color-bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: -0.06em;
+      flex-shrink: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .brand-link:hover .bh-square-logo {
+      opacity: 0.85;
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: -0.02em;
+      color: var(--color-text-primary);
+      line-height: 1.2;
+    }
+
+    .brand-title {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+    }
+
+    .nav-link {
+      font-family: var(--font-mono);
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      transition: color 0.2s ease;
+      position: relative;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--color-text-primary);
+    }
+
+    .nav-link.active::after {
+      content: "";
+      position: absolute;
+      bottom: -6px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--color-accent-cyan);
+    }
+
+    /* Theme Switcher Toggle */
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+      padding: 0.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--color-text-primary);
+    }
+
+    [data-theme="dark"] .moon-icon {
+      display: none !important;
+    }
+    [data-theme="dark"] .sun-icon {
+      display: block !important;
+    }
+
+    [data-theme="light"] .sun-icon {
+      display: none !important;
+    }
+    [data-theme="light"] .moon-icon {
+      display: block !important;
+    }
+
+    .mobile-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 24px;
+      height: 14px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .hamburger-line {
+      width: 100%;
+      height: 2px;
+      background-color: var(--color-text-primary);
+    }
+
+    .mobile-nav {
+      display: none;
+      flex-direction: column;
+      padding: 1rem 1.5rem;
+      gap: 0.75rem;
+      background-color: var(--color-bg-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .mobile-nav.open {
+      display: flex;
+    }
+
+    .mobile-nav-link {
+      font-family: var(--font-mono);
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 0.95rem;
+      padding: 0.5rem 0;
+    }
+
+    .mobile-nav-link:hover, .mobile-nav-link.active {
+      color: var(--color-text-primary);
+    }
+
+    @media (max-width: 840px) {
+      .desktop-nav {
+        display: none;
+      }
+      .mobile-toggle {
+        display: flex;
+      }
+    }
+
+    /* =============================================================
+       PROJECT SUBMENU (DEDICATED STICKY PROJECT SUB-BAR)
+       ============================================================= */
+    .project-subnav {
+      position: sticky;
+      top: 64px;
+      z-index: 990;
+      background-color: var(--color-bg-surface);
+      border-bottom: 1px solid var(--color-border);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .project-subnav.scrolled {
+      background-color: rgba(18, 18, 18, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    [data-theme="light"] .project-subnav.scrolled {
+      background-color: rgba(255, 255, 255, 0.92);
+    }
+
+    .subnav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      gap: 1rem;
+    }
+
+    .subnav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .subnav-crumb {
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+
+    .subnav-crumb:hover {
+      color: var(--color-accent-cyan);
+    }
+
+    .subnav-sep {
+      color: var(--color-border-light);
+    }
+
+    .subnav-current {
+      color: var(--color-text-primary);
+      font-weight: 700;
+    }
+
+    .subnav-badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border: 1px solid var(--color-border);
+      font-size: 0.68rem;
+      color: var(--color-accent-cyan);
+      background: rgba(6, 182, 212, 0.08);
+      border-radius: 2px;
+    }
+
+    .subnav-menu {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .subnav-menu::-webkit-scrollbar {
+      display: none;
+    }
+
+    .subnav-link {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+
+    .subnav-link:hover, .subnav-link.active {
+      color: var(--color-accent-cyan);
+    }
+
+    .subnav-link.github-link {
+      color: var(--color-text-primary);
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 700;
+    }
+
+    /* =============================================================
+       HERO SECTION FOR MINIMAL-HUD-RS
+       ============================================================= */
+    .project-hero {
+      padding: 3.5rem 0 3rem;
+      background: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .hero-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .hero-header-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .hero-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
+      font-weight: 700;
+      color: var(--color-accent-cyan);
     }
 
-    h1 {
-      font-size: 2.75rem;
+    .hero-tag {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+      background: var(--color-bg-surface);
+      border-radius: 2px;
+      letter-spacing: 0.04em;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 3.8rem);
       font-weight: 800;
-      letter-spacing: -0.03em;
-      background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.75rem;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--color-text-primary);
     }
 
-    p.subtitle {
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      max-width: 700px;
-      margin: 0 auto;
+    .hero-tagline {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      font-weight: 600;
+      color: var(--color-accent-cobalt);
+      letter-spacing: -0.01em;
+      line-height: 1.4;
+    }
+
+    .hero-desc {
+      color: var(--color-text-secondary);
+      font-size: 1.05rem;
+      max-width: 820px;
       line-height: 1.6;
     }
 
-    main {
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.75rem 1.25rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--color-btn-bg);
+      color: var(--color-btn-text);
+      border-color: var(--color-btn-bg);
+    }
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--color-bg-surface);
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
+    }
+    .btn-secondary:hover {
+      border-color: var(--color-text-primary);
+      transform: translateY(-1px);
+    }
+
+    .hero-cli {
+      display: inline-flex;
+      align-items: center;
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      padding: 0.55rem 0.85rem;
+      gap: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--color-text-primary);
+    }
+
+    .hero-copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0.2rem;
+      transition: color 0.15s ease;
+    }
+    .hero-copy-btn:hover {
+      color: var(--color-accent-cyan);
+    }
+    .hero-copy-btn.copied {
+      color: var(--color-accent-emerald);
+    }
+
+    /* Hero Metrics Grid */
+    .hero-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .hero-metric-card {
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      transition: border-color 0.15s ease;
+    }
+    .hero-metric-card:hover {
+      border-color: var(--color-concrete-light);
+    }
+
+    .hero-metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--color-accent-cyan);
+      letter-spacing: -0.02em;
+    }
+
+    .hero-metric-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .hero-metric-sub {
+      font-size: 0.8rem;
+      color: var(--color-text-secondary);
+      line-height: 1.45;
+    }
+
+    /* =============================================================
+       SECTION HEADERS
+       ============================================================= */
+    .section-header-block {
+      padding: 2.5rem 0 1rem;
+    }
+    .section-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .section-title-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
+    }
+    .section-title-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--color-accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Main Grid Layout */
+    main.sim-main {
       flex: 1;
       max-width: 1300px;
       width: 100%;
       margin: 0 auto;
-      padding: 1rem 2rem 3rem;
+      padding: 0 1.5rem 3rem;
       display: grid;
       grid-template-columns: 1fr 380px;
       gap: 2rem;
     }
 
     @media (max-width: 1024px) {
-      main {
+      main.sim-main {
         grid-template-columns: 1fr;
       }
     }
@@ -126,9 +678,9 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
-      border-radius: 1.25rem;
+      border-radius: 0.5rem;
       padding: 1.75rem;
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4);
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
@@ -141,10 +693,108 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #fff;
+      color: var(--color-text-primary);
     }
 
-    /* Simulation HUD Canvas Container */
+    /* Code Architecture Section */
+    .code-section {
+      padding: 2.5rem 0 3.5rem;
+      border-top: 1px solid var(--color-border);
+      background: var(--color-bg-surface);
+    }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .code-card {
+      background: var(--color-void);
+      border: 1px solid var(--color-border);
+      overflow: hidden;
+    }
+
+    .code-card-header {
+      background: var(--color-charcoal);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0.65rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-secondary);
+    }
+
+    .code-card pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: var(--color-text-primary);
+    }
+
+    /* Footer */
+    footer.site-footer {
+      padding: 2.5rem 0;
+      border-top: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-secondary);
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+    }
+
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .footer-links a {
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .footer-links a:hover {
+      color: var(--color-text-primary);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--color-text-primary);
+      color: var(--color-bg-primary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.6rem 1rem;
+      letter-spacing: 0.05em;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 2000;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* =============================================================
+       EXISTING SIMULATION CANVAS STYLES
+       ============================================================= */
+/* Simulation HUD Canvas Container */
     .hud-stage {
       background: #030712;
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -497,37 +1147,176 @@
       border-color: #6366f1;
       color: #c7d2fe;
     }
-
-    footer {
-      text-align: center;
-      padding: 2rem;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    footer a {
-      color: #a5b4fc;
-      text-decoration: none;
-    }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="badge-bar">
-      <span class="badge">Pure Rust</span>
-      <span class="badge">Event-Driven</span>
-      <span class="badge">Dirty-Checking</span>
-      <span class="badge">FiveM Architecture</span>
-      <span class="badge">Bevy 0.15 ECS</span>
+  <!-- =============================================================
+       SITE HEADER (SYNCED WITH BRANDONHUBBARD.COM)
+       ============================================================= -->
+  <header class="site-header" id="topHeader">
+    <div class="container header-content">
+      <a href="https://brandonhubbard.com/" class="brand-link">
+        <div class="bh-square-logo">
+          <span>BH</span>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">BRANDON HUBBARD</span>
+          <span class="brand-title">Senior Web Developer</span>
+        </div>
+      </a>
+
+      <div class="nav-controls">
+        <nav class="desktop-nav">
+          <a href="https://brandonhubbard.com/" class="nav-link">01. Home</a>
+          <a href="https://brandonhubbard.com/branding" class="nav-link">02. Branding</a>
+          <a href="https://brandonhubbard.com/blog" class="nav-link">03. Blog</a>
+          <a href="https://brandonhubbard.com/contact" class="nav-link">04. Contact</a>
+          <a href="https://webtools.brandonhubbard.com/" class="nav-link" target="_blank" rel="noopener noreferrer">05. Tools</a>
+          <a href="https://code.brandonhubbard.com/" class="nav-link active">06. Code</a>
+        </nav>
+
+        <!-- Theme Switcher Toggle -->
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light or dark theme" title="Toggle Light/Dark Theme">
+          <!-- Sun Icon (visible in dark mode) -->
+          <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+
+          <!-- Moon Icon (visible in light mode) -->
+          <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <button id="mobile-toggle" class="mobile-toggle" aria-label="Toggle navigation menu">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+      </div>
     </div>
-    <h1>minimal-hud-rs</h1>
-    <p class="subtitle">High-performance HUD state tracking, dynamic alert thresholds, vehicle telemetry, and zero-cost dirty change detection ported from ThatMadCap/minimal-hud.</p>
+
+    <!-- Mobile Dropdown Navigation -->
+    <div id="mobile-nav" class="mobile-nav">
+      <a href="https://brandonhubbard.com/" class="mobile-nav-link">01. Home</a>
+      <a href="https://brandonhubbard.com/branding" class="mobile-nav-link">02. Branding</a>
+      <a href="https://brandonhubbard.com/blog" class="mobile-nav-link">03. Blog</a>
+      <a href="https://brandonhubbard.com/contact" class="mobile-nav-link">04. Contact</a>
+      <a href="https://webtools.brandonhubbard.com/" class="mobile-nav-link" target="_blank" rel="noopener noreferrer">05. Tools</a>
+      <a href="https://code.brandonhubbard.com/" class="mobile-nav-link active">06. Code</a>
+    </div>
   </header>
 
-  <main>
-    <!-- Left Column: Live HUD Stage and Performance Metrics -->
+  <!-- =============================================================
+       PROJECT SUBMENU (DEDICATED STICKY PROJECT SUB-BAR)
+       ============================================================= -->
+  <div class="project-subnav" id="projectSubnav">
+    <div class="container subnav-inner">
+      <div class="subnav-breadcrumbs">
+        <a href="https://code.brandonhubbard.com/" class="subnav-crumb">CODE</a>
+        <span class="subnav-sep">/</span>
+        <span class="subnav-current">minimal-hud-rs</span>
+        <span class="subnav-badge">CRATE v0.1.0</span>
+      </div>
+
+      <nav class="subnav-menu">
+        <a href="#overview" class="subnav-link active">Overview</a>
+        <a href="#hud-simulation" class="subnav-link">Simulation</a>
+        <a href="#controls" class="subnav-link">Controls</a>
+        <a href="#architecture" class="subnav-link">Architecture</a>
+        <a href="https://github.com/bhubbard/minimal-hud-rs" target="_blank" rel="noopener noreferrer" class="subnav-link github-link">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub ↗
+        </a>
+        <a href="https://code.brandonhubbard.com/" class="subnav-link">Hub ↵</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- =============================================================
+       CLEAR HERO SECTION FOR MINIMAL-HUD-RS
+       ============================================================= -->
+  <section class="project-hero" id="overview">
+    <div class="container hero-container">
+      <div class="hero-header-meta">
+        <span class="hero-badge">[ CRATE // HIGH-PERFORMANCE GAME HUD ]</span>
+        <span class="hero-tag">PURE RUST</span>
+        <span class="hero-tag">DIRTY-CHECKING</span>
+        <span class="hero-tag">BEVY 0.15 ECS</span>
+        <span class="hero-tag">FIVEM NUI</span>
+      </div>
+
+      <h1 class="hero-title">minimal-hud-rs</h1>
+      <p class="hero-tagline">High-Performance Event-Driven Game HUD State Engine</p>
+      <p class="hero-desc">
+        Zero-cost dirty change detection, dynamic alert thresholds, vehicle telemetry pipelines, and reactive sound cue triggers. Engineered in pure Rust for real-time 60fps simulation with instant NUI dispatch.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#hud-simulation" class="btn btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Interactive Simulation ↓
+        </a>
+        <a href="https://github.com/bhubbard/minimal-hud-rs" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub Repository ↗
+        </a>
+        <div class="hero-cli">
+          <code>cargo add minimal-hud-rs</code>
+          <button class="hero-copy-btn" data-copy="cargo add minimal-hud-rs" title="Copy cargo command">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hero Metrics Grid -->
+      <div class="hero-metrics-grid">
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">0%</span>
+          <span class="hero-metric-label">Clean Frame Overhead</span>
+          <p class="hero-metric-sub">Bitmask dirty bypass skips serialization whenever vital stats are steady.</p>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">&lt; 0.05ms</span>
+          <span class="hero-metric-label">Evaluation Latency</span>
+          <p class="hero-metric-sub">Full vital telemetry state computed in microseconds per 60Hz tick.</p>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">60 Hz</span>
+          <span class="hero-metric-label">Tick Rate Frequency</span>
+          <p class="hero-metric-sub">Smooth real-time circular meter progress with zero frametime stutter.</p>
+        </div>
+        <div class="hero-metric-card">
+          <span class="hero-metric-val">100%</span>
+          <span class="hero-metric-label">Memory-Safe Pure Rust</span>
+          <p class="hero-metric-sub">Zero unsafe blocks. First-class FiveM NUI and Bevy 0.15 ECS connectors.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================
+       INTERACTIVE HUD SIMULATION SECTION
+       ============================================================= -->
+  <section class="section-header-block" id="hud-simulation">
+    <div class="container">
+      <div class="section-title-row">
+        <span class="section-title-text">01. Live Simulation &amp; Engine Profiler</span>
+        <span class="section-title-badge">[ INTERACTIVE WEBAUDIO &amp; 60FPS TICK ]</span>
+      </div>
+    </div>
+  </section>
+
+  <main class="sim-main" id="controls">
+<!-- Left Column: Live HUD Stage and Performance Metrics -->
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       <div class="card">
         <div class="card-title">
@@ -790,12 +1579,218 @@
     </div>
   </main>
 
-  <footer>
-    <p>minimal-hud-rs · Built with Rust & Bevy ECS · <a href="https://github.com/bhubbard/minimal-hud-rs" target="_blank">View on GitHub</a></p>
+  <!-- =============================================================
+       CRATE ARCHITECTURE & USAGE REFERENCE
+       ============================================================= -->
+  <section class="code-section" id="architecture">
+    <div class="container">
+      <div class="section-title-row">
+        <span class="section-title-text">02. Crate Architecture &amp; Integration</span>
+        <span class="section-title-badge">[ RUST QUICK START ]</span>
+      </div>
+
+      <div class="code-grid">
+        <div class="code-card">
+          <div class="code-card-header">
+            <span>Cargo.toml</span>
+            <span style="color: var(--color-accent-cyan);">TOML</span>
+          </div>
+          <pre><code>[dependencies]
+minimal-hud-rs = "0.1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"</code></pre>
+        </div>
+
+        <div class="code-card">
+          <div class="code-card-header">
+            <span>src/main.rs</span>
+            <span style="color: var(--color-accent-emerald);">RUST</span>
+          </div>
+          <pre><code>use minimal_hud_rs::{HudState, VitalStats, VehicleTelemetry, DirtyFlags};
+
+fn main() {
+    let mut hud = HudState::new();
+
+    // Update vitals on game tick
+    hud.update_health(75.0);
+    hud.update_hunger(40.0);
+
+    // Zero-cost dirty check: only dispatch when flags are non-empty
+    if let Some(dirty_payload) = hud.take_dirty() {
+        println!("Dispatching HUD update: {:?}", dirty_payload);
+    }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================
+       SITE FOOTER
+       ============================================================= -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div>
+        <span>© 2026 BRANDON HUBBARD. CODE AS CRAFT. RADICAL OWNERSHIP.</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://brandonhubbard.com/">Home</a>
+        <a href="https://brandonhubbard.com/branding">Branding</a>
+        <a href="https://brandonhubbard.com/blog">Blog</a>
+        <a href="https://code.brandonhubbard.com/">Code Hub</a>
+        <a href="https://github.com/bhubbard" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </div>
   </footer>
 
+  <!-- Toast -->
+  <div class="toast" id="toast">COMMAND COPIED TO CLIPBOARD</div>
+
+  <!-- Scripts -->
   <script>
-    // --- Web Audio Synthesizer ---
+    // ─── Header & Subnav Interactions ───────────────────────────
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const mobileNav = document.getElementById('mobile-nav');
+
+    if (mobileToggle && mobileNav) {
+      mobileToggle.addEventListener('click', () => {
+        mobileNav.classList.toggle('open');
+        mobileToggle.classList.toggle('active');
+      });
+    }
+
+    // Theme Switcher Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+      });
+    }
+
+    // Header & Subnav Scroll Dynamics
+    function handleScroll() {
+      const siteHeader = document.getElementById('topHeader');
+      const projectSubnav = document.getElementById('projectSubnav');
+      const isScrolled = window.scrollY > 20;
+
+      if (siteHeader) {
+        siteHeader.classList.toggle('scrolled', isScrolled);
+      }
+      if (projectSubnav) {
+        projectSubnav.classList.toggle('scrolled', isScrolled);
+      }
+
+      // Subnav active indicator tracking
+      const sections = [
+        { id: 'overview', el: document.getElementById('overview') },
+        { id: 'hud-simulation', el: document.getElementById('hud-simulation') },
+        { id: 'controls', el: document.getElementById('controls') },
+        { id: 'architecture', el: document.getElementById('architecture') }
+      ];
+
+      const scrollPos = window.scrollY + 160;
+      sections.forEach(s => {
+        if (!s.el) return;
+        const top = s.el.offsetTop;
+        const height = s.el.offsetHeight;
+        if (scrollPos >= top && scrollPos < top + height) {
+          document.querySelectorAll('.subnav-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === `#${s.id}`) {
+              link.classList.add('active');
+            } else if (href && href.startsWith('#')) {
+              link.classList.remove('active');
+            }
+          });
+        }
+      });
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    // Toast notification
+    const toast = document.getElementById('toast');
+    function showToast(text) {
+      if (!toast) return;
+      toast.textContent = text || 'COPIED TO CLIPBOARD';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Hero Copy Button
+    document.querySelectorAll('.hero-copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const text = btn.dataset.copy;
+        if (text) {
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.classList.add('copied');
+            showToast(`COPIED: ${text}`);
+            setTimeout(() => btn.classList.remove('copied'), 2000);
+          } catch (e) {
+            showToast('COPIED TO CLIPBOARD');
+          }
+        }
+      });
+    });
+
+    // ─── Kinetics: Scramble Reveal for Header Tagline ───────────
+    const CHARS = '!<>/[]{}=+*^?#_~';
+
+    function initScramble() {
+      const titleEl = document.querySelector('.brand-title');
+      if (!titleEl) return;
+      
+      const targetText = (titleEl.getAttribute('data-text') || titleEl.textContent || 'SENIOR WEB DEVELOPER').trim();
+      titleEl.setAttribute('data-text', targetText);
+
+      let intervalId = null;
+
+      const playScramble = () => {
+        if (intervalId) clearInterval(intervalId);
+        let frame = 0;
+        const totalFrames = 22;
+        
+        intervalId = setInterval(() => {
+          frame++;
+          titleEl.textContent = targetText.split('').map((char, i) => {
+            if (char === ' ') return ' ';
+            const progress = frame - i * 1.1;
+            return progress > totalFrames * 0.5
+              ? char
+              : CHARS[Math.floor(Math.random() * CHARS.length)];
+          }).join('');
+          
+          if (frame > totalFrames + Math.ceil(targetText.length * 1.1)) {
+            clearInterval(intervalId);
+            titleEl.textContent = targetText;
+            intervalId = null;
+          }
+        }, 30);
+      };
+
+      setTimeout(playScramble, 250);
+
+      const brandLink = document.querySelector('.brand-link');
+      if (brandLink) {
+        brandLink.addEventListener('mouseenter', playScramble);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initScramble);
+    } else {
+      initScramble();
+    }
+
+    // =============================================================
+    // PRESERVED SIMULATION & ENGINE LOGIC
+    // =============================================================
+// --- Web Audio Synthesizer ---
     let audioCtx = null;
     let audioEnabled = true;
 
