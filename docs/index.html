@@ -1987,6 +1987,45 @@ fn main() {
   <!-- Toast -->
   <div class="toast" id="toast">COMMAND COPIED TO CLIPBOARD</div>
 
+<!-- =============================================================
+       COMMAND PALETTE / SEARCH MODAL (CMD+K)
+       ============================================================= -->
+  <div class="modal-overlay" id="searchModalOverlay">
+    <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search repositories">
+      <div class="modal-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--color-accent-cobalt);">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="SEARCH ALL OPEN SOURCE REPOSITORIES..." autocomplete="off">
+        <button type="button" class="modal-close-btn" id="modalCloseBtn">ESC</button>
+      </div>
+
+      <div class="modal-filters">
+        <button type="button" class="modal-filter-btn active" data-filter="all">All</button>
+        <button type="button" class="modal-filter-btn" data-filter="pages">GitHub Pages (48)</button>
+        <button type="button" class="modal-filter-btn" data-filter="flare">The Flare Suite (4)</button>
+        <button type="button" class="modal-filter-btn" data-filter="astro">Chrome AI / Astro (13)</button>
+        <button type="button" class="modal-filter-btn" data-filter="cli">Rust &amp; CLI</button>
+        <button type="button" class="modal-filter-btn" data-filter="wordpress">WordPress (16)</button>
+        <button type="button" class="modal-filter-btn" data-filter="tools">Cloud &amp; Tools</button>
+      </div>
+
+      <div class="modal-body" id="modalResultsList">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="modal-footer">
+        <div class="modal-hints">
+          <span><kbd>↑</kbd><kbd>↓</kbd> NAVIGATE</span>
+          <span><kbd>↵</kbd> OPEN</span>
+          <span><kbd>ESC</kbd> CLOSE</span>
+        </div>
+        <span id="modalMatchCount">SHOWING 87 REPOSITORIES</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script>
     // ─── Header & Subnav Interactions ───────────────────────────
@@ -3666,9 +3705,11 @@ fn main() {
     });
 
     window.addEventListener("keydown", (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      const isCmdK = (e.metaKey || e.ctrlKey) && (e.code === "KeyK" || (e.key && e.key.toLowerCase() === "k"));
+      if (isCmdK) {
         e.preventDefault();
-        if (searchModalOverlay.classList.contains("active")) {
+        e.stopPropagation();
+        if (searchModalOverlay && searchModalOverlay.classList.contains("active")) {
           closeModal();
         } else {
           openModal();
@@ -3764,49 +3805,20 @@ fn main() {
       }
     }
 
+    if (modalResultsList) {
+      modalResultsList.addEventListener("click", (e) => {
+        const item = e.target.closest(".modal-item");
+        if (item) {
+          closeModal();
+        }
+      });
+    }
+
     renderModalResults();
     syncGitHubRepos();
 
   </script>
 
-  <!-- =============================================================
-       COMMAND PALETTE / SEARCH MODAL (CMD+K)
-       ============================================================= -->
-  <div class="modal-overlay" id="searchModalOverlay">
-    <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search repositories">
-      <div class="modal-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--color-accent-cobalt);">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="SEARCH ALL OPEN SOURCE REPOSITORIES..." autocomplete="off">
-        <button type="button" class="modal-close-btn" id="modalCloseBtn">ESC</button>
-      </div>
-
-      <div class="modal-filters">
-        <button type="button" class="modal-filter-btn active" data-filter="all">All</button>
-        <button type="button" class="modal-filter-btn" data-filter="pages">GitHub Pages (48)</button>
-        <button type="button" class="modal-filter-btn" data-filter="flare">The Flare Suite (4)</button>
-        <button type="button" class="modal-filter-btn" data-filter="astro">Chrome AI / Astro (13)</button>
-        <button type="button" class="modal-filter-btn" data-filter="cli">Rust &amp; CLI</button>
-        <button type="button" class="modal-filter-btn" data-filter="wordpress">WordPress (16)</button>
-        <button type="button" class="modal-filter-btn" data-filter="tools">Cloud &amp; Tools</button>
-      </div>
-
-      <div class="modal-body" id="modalResultsList">
-        <!-- Populated dynamically -->
-      </div>
-
-      <div class="modal-footer">
-        <div class="modal-hints">
-          <span><kbd>↑</kbd><kbd>↓</kbd> NAVIGATE</span>
-          <span><kbd>↵</kbd> OPEN</span>
-          <span><kbd>ESC</kbd> CLOSE</span>
-        </div>
-        <span id="modalMatchCount">SHOWING 87 REPOSITORIES</span>
-      </div>
-    </div>
-  </div>
 
 </body>
 </html>
