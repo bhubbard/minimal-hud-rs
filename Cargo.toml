@@ -1,6 +1,6 @@
 [package]
 name = "minimal-hud-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Brandon Hubbard"]
 description = "Pure Rust event-driven HUD state tracking, dirty change detection, vital stats, and vehicle telemetry from minimal-hud"
